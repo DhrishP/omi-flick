@@ -169,6 +169,10 @@ setInterval(() => {
   }
 }, 5000);
 
+app.get('/tp',(req,res)=>{
+  res.json({message:'hello'})
+})
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`[INFO] Server running on port ${PORT}`);
