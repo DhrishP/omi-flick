@@ -70,8 +70,8 @@ app.post("/", async (req, res) => {
     console.log(`[INFO] Full text: "${fullText}"`);
     console.log(`[INFO] Session state:`, session);
 
-    if (session.isWaitingForCompletion || cleanText.includes("zoom") || cleanText.includes("hey zoom")) {
-      if (cleanText.includes("zoom") || cleanText.includes("hey zoom")) {
+    if (session.isWaitingForCompletion || cleanText.includes("zoom") || cleanText.includes("hey zoom") || cleanText.includes("room") || cleanText.includes("sam") || cleanText.includes("sir")) {
+      if (cleanText.includes("zoom") || cleanText.includes("hey zoom") || cleanText.includes("room") || cleanText.includes("sam") || cleanText.includes("sir")) {
         session.isWaitingForCompletion = true;
         // Save session state
         await redis.setex(
@@ -123,7 +123,7 @@ app.post("/", async (req, res) => {
       console.log("[DEBUG] Question:", questionPart);
 
       const result = await model.generateContent([
-        { text: `You are Zoom, an AI assistant who does not give answer in markdown format.Who is a friendly guy but also super informative and you give answers from first principles when needed or otherwise act and talk like a normal friend. Also you algo autocorrect mistakes like if someone tells that "tell me more about lofi from one piece" then you should understand that it is referring to "luffy from one piece" and so on. Respond to this: ${questionPart} and do not ask followups, if you dont know the answer then say "I dont know the answer to that, but I can help you with other questions. give answer and talk concisely until you are answering from first principles approach."` }
+        { text: `You are Zoom, an AI assistant who does not give answer in markdown format.Who is a friendly guy but also super informative and you give answers from first principles when needed or otherwise act and talk like a normal friend. Also you algo autocorrect mistakes like e.g that "tell me more about lofi from one piece" then you should understand that it is referring to "luffy from one piece" and so on. Respond to this: ${questionPart} and do not ask followups, if you dont know the answer then say "I dont know the answer to that, but I can help you with other questions. give answer and talk concisely until you are answering from first principles approach."` }
       ]);
 
       const answer = await result.response.text();
