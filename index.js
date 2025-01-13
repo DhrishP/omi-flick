@@ -2,6 +2,9 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const Redis = require('ioredis');
+const dotenv = require('dotenv')
+
+dotenv.config()
 
 const app = express();
 app.use(bodyParser.json());
@@ -83,8 +86,10 @@ app.post("/", async (req, res) => {
           data: session
         });
         
-        // If it's just the trigger word, wait for more
-        if (cleanText.endsWith("zoom")) {
+        // If it's just the trigger word or incomplete phrase, wait for more
+        if (cleanText.endsWith("zoom") || 
+            cleanText.endsWith("tell me") || 
+            cleanText.endsWith("tell")) {
           return res.json({ status: "waiting for question" });
         }
       }
@@ -94,8 +99,11 @@ app.post("/", async (req, res) => {
         .replace(/zoom/g, '')
         .trim();
 
-      if (!questionPart) {
-        // Save session state
+      // Don't process incomplete questions
+      if (!questionPart || 
+          questionPart === "tell me" || 
+          questionPart.endsWith("tell me")) {
+        // Save current session state and wait for more
         await redis.setex(
           `session:${sessionId}`, 
           SESSION_TTL, 
@@ -111,23 +119,24 @@ app.post("/", async (req, res) => {
         return res.json({ status: "waiting for question" });
       }
 
+      // Only process if we have a complete question
       console.log("[DEBUG] Question:", questionPart);
 
       const result = await model.generateContent([
-        { text: `You are Omi, an AI assistant. Respond to this: ${questionPart}` }
+        { text: `You are Zoom, an AI assistant who does not give answer in markdown format.Who is a friendly guy but also super informative and you give answers from first principles when needed or otherwise act and talk like a normal friend. Also you algo autocorrect mistakes like if someone tells that "tell me more about lofi from one piece" then you should understand that it is referring to "luffy from one piece" and so on. Respond to this: ${questionPart} and do not ask followups, if you dont know the answer then say "I dont know the answer to that, but I can help you with other questions. give answer and talk concisely until you are answering from first principles approach."` }
       ]);
 
       const answer = await result.response.text();
       console.log("[INFO] Omi's response:", answer);
 
-      // Clear session
+      // Only clear session after successful complete question processing
       await redis.del(`session:${sessionId}`);
       MEMORY_CACHE.delete(sessionId);
       
       return res.json({ message: answer });
     }
 
-    // Save session state if waiting for trigger
+    // If we have an active session, append to it
     if (session.isWaitingForCompletion) {
       await redis.setex(
         `session:${sessionId}`, 
@@ -135,11 +144,11 @@ app.post("/", async (req, res) => {
         JSON.stringify(session)
       );
       
-      // Update memory cache
       MEMORY_CACHE.set(sessionId, {
         timestamp: now,
         data: session
       });
+      return res.json({ status: "waiting for more" });
     }
     
     return res.json({ status: "waiting for trigger" });
